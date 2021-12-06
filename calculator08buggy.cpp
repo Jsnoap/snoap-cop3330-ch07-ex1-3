@@ -10,14 +10,19 @@
 
 #include "std_lib_facilities.h"
 
+// Struct for Token to create new type with char, double, and string
 struct Token {
 	char kind;
 	double value;
 	string name;
 	Token(char ch) :kind(ch), value(0) { }
 	Token(char ch, double val) :kind(ch), value(val) { }
+
+	// Adding in new constructor (Removes error)
+	Token(char ch, string value) :kind(ch), name(value) { }
 };
 
+// Creating Token_stream class that helps calculator receive input
 class Token_stream {
 	bool full;
 	Token buffer;
@@ -30,18 +35,29 @@ public:
 	void ignore(char);
 };
 
+// Defining constants
 const char let = 'L';
 const char quit = 'Q';
 const char print = ';';
 const char number = '8';
 const char name = 'a';
 
+// Added New
+const char sqrtCalc = 's';
+
+// Looks at the characters and gives them meaning
 Token Token_stream::get()
 {
-	if (full) { full = false; return buffer; }
+	if (full) 
+	{ 
+		full = false;
+		 return buffer; 
+	}
+
 	char ch;
 	cin >> ch;
 	switch (ch) {
+	// These characters stay as is
 	case '(':
 	case ')':
 	case '+':
@@ -52,6 +68,7 @@ Token Token_stream::get()
 	case ';':
 	case '=':
 		return Token(ch);
+	// These characters get evaluated for their numerical value
 	case '.':
 	case '0':
 	case '1':
@@ -63,21 +80,36 @@ Token Token_stream::get()
 	case '7':
 	case '8':
 	case '9':
-	{	cin.unget();
+	{	
+	cin.unget();
 	double val;
 	cin >> val;
 	return Token(number, val);
 	}
+	// add in predefined "k"
+	case 'k':
+	{	
+	cin.unget();
+	double val;
+	cin >> val;
+	return Token(number, 1000);
+	}
 	default:
-		if (isalpha(ch)) {
+	// Occurs if char is a letter
+		if (isalpha(ch)) 
+		{
 			string s;
 			s += ch;
+
 			while (cin.get(ch) && (isalpha(ch) || isdigit(ch))) s = ch;
 			cin.unget();
+
 			if (s == "let") return Token(let);
-			if (s == "quit") return Token(name);
+			if (s == "quit") return Token(quit);
+			if (s == "sqrt") return Token(sqrtCalc);
 			return Token(name, s);
 		}
+		// Catches all other inputs
 		error("Bad token");
 	}
 }
@@ -95,6 +127,7 @@ void Token_stream::ignore(char c)
 		if (ch == c) return;
 }
 
+// Creating Variable data type of a name (string) and a value (double)
 struct Variable {
 	string name;
 	double value;
@@ -103,6 +136,7 @@ struct Variable {
 
 vector<Variable> names;
 
+// Returns the value of variable passed in
 double get_value(string s)
 {
 	for (int i = 0; i < names.size(); ++i)
@@ -110,6 +144,7 @@ double get_value(string s)
 	error("get: undefined name ", s);
 }
 
+// Sets the value of a variable to the double value
 void set_value(string s, double d)
 {
 	for (int i = 0; i <= names.size(); ++i)
@@ -120,6 +155,7 @@ void set_value(string s, double d)
 	error("set: undefined name ", s);
 }
 
+// Check if a variable is declared
 bool is_declared(string s)
 {
 	for (int i = 0; i < names.size(); ++i)
@@ -136,9 +172,28 @@ double primary()
 	Token t = ts.get();
 	switch (t.kind) {
 	case '(':
-	{	double d = expression();
-	t = ts.get();
-	if (t.kind != ')') error("'(' expected");
+	{	
+		double d = expression();
+		t = ts.get();
+		if (t.kind != ')') 
+		{
+			error("')' expected");
+		}
+		return d;
+	}
+	// Adding sqrt() with error for negative values
+	case sqrtCalc: 
+	{
+			double d = expression();
+
+			if (d < 0)
+			{
+				error("Cannot have a negative value within sqrt()");
+			}
+			else
+			{
+				return sqrt(d);
+			}
 	}
 	case '-':
 		return -primary();
@@ -146,6 +201,8 @@ double primary()
 		return t.value;
 	case name:
 		return get_value(t.name);
+	case '=':
+			return primary();
 	default:
 		error("primary expected");
 	}
@@ -154,14 +211,16 @@ double primary()
 double term()
 {
 	double left = primary();
-	while (true) {
+	while (true) 
+	{
 		Token t = ts.get();
 		switch (t.kind) {
 		case '*':
 			left *= primary();
 			break;
 		case '/':
-		{	double d = primary();
+		{	
+		double d = primary();
 		if (d == 0) error("divide by zero");
 		left /= d;
 		break;
